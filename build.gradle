@@ -23,7 +23,9 @@ repositories {
 
 dependencies {
     compile fileTree(include: '*.jar', dir: 'libs')
-    compile 'org.appcan:engine:+:systemRelease@aar'
+//    compile 'org.appcan:engine:+:systemRelease@aar'
+    compile(name: 'Engine-system-release', ext: 'aar')
+    compile 'com.android.support:multidex:1.0.0'
 }
 
 android {
@@ -77,6 +79,7 @@ android {
         signingConfig signingConfigs.config
         applicationId 'org.zywx.wbpalmstar.widgetone.uexgaodemap'
         minSdkVersion 14
+        targetSdkVersion 26
         multiDexEnabled true
 //        ndk {
 //            abiFilters "armeabi"

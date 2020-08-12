@@ -22,6 +22,7 @@ import com.amap.api.maps.AMap.OnMapLoadedListener;
 import com.amap.api.maps.CameraUpdateFactory;
 import com.amap.api.maps.LocationSource;
 import com.amap.api.maps.MapView;
+import com.amap.api.maps.TextureMapView;
 import com.amap.api.maps.UiSettings;
 import com.amap.api.maps.model.CameraPosition;
 import com.amap.api.maps.model.LatLng;
@@ -76,7 +77,7 @@ public class AMapBasicFragment extends BaseFragment implements OnMapLoadedListen
         LocationSource, AMap.OnMapClickListener, AMap.OnMapLongClickListener,
         AMap.OnCameraChangeListener {
     public static final String TAG = "AMapBasicFragment";
-    private MapView mapView;
+    private TextureMapView mapView;
     private AMap aMap;
     private UiSettings settings;
     public OnCallBackListener mListener;
@@ -122,7 +123,7 @@ public class AMapBasicFragment extends BaseFragment implements OnMapLoadedListen
         //  MapsInitializer.sdcardDir =OffLineMapUtils.getSdCacheDir(this);
         mContent = (FrameLayout) view.findViewById(EUExUtil.getResIdID("plugin_uexgaodemap_bg_content"));
         mButtons = new HashMap<String, CustomButtonBean>();
-        mapView = (MapView) view.findViewById(EUExUtil.getResIdID("plugin_uexgaodemap_basic_map"));
+        mapView = (TextureMapView) view.findViewById(EUExUtil.getResIdID("plugin_uexgaodemap_basic_map"));
         mapView.onCreate(savedInstanceState);// 此方法必须重写
         init();
         aMap.setOnMapLoadedListener(this);

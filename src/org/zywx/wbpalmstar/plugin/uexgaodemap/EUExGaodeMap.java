@@ -1,18 +1,23 @@
 package org.zywx.wbpalmstar.plugin.uexgaodemap;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.PixelFormat;
 import android.os.Bundle;
 import android.os.Message;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.AbsoluteLayout;
 import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
+import android.widget.Toast;
 
 import com.amap.api.location.AMapLocation;
 import com.amap.api.maps.MapsInitializer;
@@ -52,6 +57,7 @@ import org.zywx.wbpalmstar.base.BDebug;
 import org.zywx.wbpalmstar.base.BUtility;
 import org.zywx.wbpalmstar.base.ResoureFinder;
 import org.zywx.wbpalmstar.engine.DataHelper;
+import org.zywx.wbpalmstar.engine.EBrowserActivity;
 import org.zywx.wbpalmstar.engine.EBrowserView;
 import org.zywx.wbpalmstar.engine.universalex.EUExBase;
 import org.zywx.wbpalmstar.engine.universalex.EUExCallback;
@@ -173,6 +179,7 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
     private boolean isScrollWithWeb = false;
 
     private AMapBasicFragment basicFragment;
+    private String[]  openParams;
 
     public EUExGaodeMap(Context context, EBrowserView eBrowserView) {
         super(context, eBrowserView);
@@ -190,16 +197,24 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
 
 
     public void open(final String[] params) {
-        if (getAMapActivity() != null){
-            close(null);
-            mHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    openAMap(params);
-                }
-            }, 500);
-        }else{
-            openAMap(params);
+        openParams = params;
+        // android6.0以上动态权限申请
+        if (mContext.checkCallingOrSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED){
+            requsetPerssions(Manifest.permission.ACCESS_FINE_LOCATION, "请先申请权限"
+                    + Manifest.permission.ACCESS_FINE_LOCATION, 1);
+        } else {
+            if (getAMapActivity() != null) {
+                close(null);
+                mHandler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        openAMap(params);
+                    }
+                }, 500);
+            } else {
+                openAMap(params);
+            }
         }
     }
 
@@ -221,14 +236,14 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
             double h = Double.valueOf(jsonObject.getString(JsConst.HEIGHT));
             height = (int) h;
             if (jsonObject.has(JsConst.LONGITUDE)
-                    && jsonObject.has(JsConst.LATITUDE)){
+                    && jsonObject.has(JsConst.LATITUDE)) {
                 double longitude = Double.valueOf(jsonObject.getString(JsConst.LONGITUDE));
                 double latitude = Double.valueOf(jsonObject.getString(JsConst.LATITUDE));
                 latlng = new double[2];
                 latlng[0] = longitude;
                 latlng[1] = latitude;
             }
-            if (jsonObject.has(JsConst.IS_SCROLL_WITH_WEB)){
+            if (jsonObject.has(JsConst.IS_SCROLL_WITH_WEB)) {
                 isScrollWithWeb = Boolean.valueOf(jsonObject.getString(JsConst.IS_SCROLL_WITH_WEB));
             }
         } catch (JSONException e) {
@@ -238,9 +253,9 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
             width = -1;
             height = -1;
         }
-        basicFragment = new AMapBasicFragment(EUExGaodeMap.this,latlng);
+        basicFragment = new AMapBasicFragment(EUExGaodeMap.this, latlng);
 
-        if (isScrollWithWeb){
+        if (isScrollWithWeb) {
             AbsoluteLayout.LayoutParams lp = new
                     AbsoluteLayout.LayoutParams(
                     width,
@@ -248,13 +263,13 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
                     left,
                     top);
             addFragmentToWebView(basicFragment, lp, TAG);
-        }else{
+        } else {
             RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(width, height);
             lp.leftMargin = left;
             lp.topMargin = top;
             addFragmentToCurrentWindow(basicFragment, lp, TAG);
         }
-        callBackPluginJs(JsConst.CALLBACK_OPEN,"");
+        callBackPluginJs(JsConst.CALLBACK_OPEN, "");
     }
 
     public void close(String[] params) {
@@ -2893,7 +2908,26 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
         return gaodeGeoPointVOs;
     }
 
-
+    @Override
+    public void onRequestPermissionResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionResult(requestCode, permissions, grantResults);
+        if (requestCode == 1){
+            if (grantResults[0] != PackageManager.PERMISSION_DENIED){
+                open(openParams);
+            } else {
+                // 对于 ActivityCompat.shouldShowRequestPermissionRationale
+                // 1：用户拒绝了该权限，没有勾选"不再提醒"，此方法将返回true。
+                // 2：用户拒绝了该权限，有勾选"不再提醒"，此方法将返回 false。
+                // 3：如果用户同意了权限，此方法返回false
+                // 拒绝了权限且勾选了"不再提醒"
+                if (!ActivityCompat.shouldShowRequestPermissionRationale((EBrowserActivity)mContext, permissions[0])) {
+                    Toast.makeText(mContext, "请先设置权限" + permissions[0], Toast.LENGTH_LONG).show();
+                } else {
+                    requsetPerssions(Manifest.permission.ACCESS_FINE_LOCATION, "请先申请权限" + permissions[0], 1);
+                }
+            }
+        }
+    }
 
 
 
