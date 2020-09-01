@@ -5,11 +5,11 @@
     android:layout_height="match_parent"
     android:id="@+id/plugin_uexgaodemap_bg_content"
     >
-    <com.amap.api.maps.MapView
+    <com.amap.api.maps.TextureMapView
         android:id="@+id/plugin_uexgaodemap_basic_map"
         android:layout_width="match_parent"
         android:layout_height="match_parent" >
-    </com.amap.api.maps.MapView>
+    </com.amap.api.maps.TextureMapView>
     <View
         android:visibility="gone"
         android:id="@+id/overlay_view"

@@ -1,12 +1,10 @@
 buildscript {
     repositories {
         jcenter()
+        google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.2.3'
-
-        // NOTE: Do not place your application dependencies here; they belong
-        // in the individual module build.gradle files
+        classpath 'com.android.tools.build:gradle:3.0.1'
     }
 }
 
@@ -16,14 +14,15 @@ repositories {
     flatDir {
         dirs 'libs'
     }
+    google()
     maven {
         url 'https://raw.githubusercontent.com/android-plugin/mvn-repo/master/'
     }
 }
 
 dependencies {
-    compile fileTree(include: '*.jar', dir: 'libs')
-    compile 'org.appcan:engine:+:systemRelease@aar'
+    implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
+    implementation 'org.appcan:engine:4.4.27'
 }
 
 android {
@@ -35,8 +34,8 @@ android {
             storePassword '3g2win.com'
         }
     }
-    compileSdkVersion 23
-    buildToolsVersion "23.0.0"
+    compileSdkVersion 28
+    buildToolsVersion "28.0.3"
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
@@ -48,18 +47,6 @@ android {
             assets.srcDirs = ['assets']
             jniLibs.srcDirs = ['libs']
         }
-
-        // Move the tests to tests/java, tests/res, etc...
-        instrumentTest.setRoot('tests')
-
-        // Move the build types to build-types/<type>
-        // For instance, build-types/debug/java, build-types/debug/AndroidManifest.xml, ...
-        // This moves them out of them default location under src/<type>/... which would
-        // conflict with src/ being used by the main source set.
-        // Adding new build types or product flavors should be accompanied
-        // by a similar customization.
-        debug.setRoot('build-types/debug')
-        release.setRoot('build-types/release')
     }
     lintOptions {
         abortOnError false
@@ -76,11 +63,10 @@ android {
     defaultConfig {
         signingConfig signingConfigs.config
         applicationId 'org.zywx.wbpalmstar.widgetone.uexgaodemap'
-        minSdkVersion 14
+        minSdkVersion 18
+        targetSdkVersion 28
         multiDexEnabled true
-//        ndk {
-//            abiFilters "armeabi"
-//        }
+
     }
     productFlavors {
     }

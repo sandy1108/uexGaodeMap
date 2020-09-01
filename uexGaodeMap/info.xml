@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <uexplugins>
     <plugin
-        uexName="uexGaodeMap" version="4.0.6" build="2017092701">
-        <info>6:修复新SDK与高德导航冲突问题</info>
+        uexName="uexGaodeMap" version="4.4.8" build="2020081201">
+        <info>8:升级SDk版本AMap3DMap_7.5.0_AMapNavi_7.5.0_AMapSearch_7.4.0_AMapLocation_5.1.0_20200724</info>
+        <info>7:升级SDk版本AMap3DMap_6.9.4_AMapNavi_6.9.1_AMapSearch_6.9.2_AMapTrack_1.1.0_AMapLocation_4.7.0_20190831</info>
+        <info>7:修复多窗口同时打开地图出现地图重叠无法操作</info>
+        <build>7:添加动态权限申请</build>
+        <build>6:修复新SDK与高德导航冲突问题</build>
         <build>5:更新SDK,增加地图缩放级别的监听,支持定位点依照设备方向旋转,折线覆盖物支持设置纹理</build>
         <build>4:第一次open改为同步</build>
         <build>3:支持轨迹纠偏</build>
