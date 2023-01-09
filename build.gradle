@@ -4,7 +4,7 @@ buildscript {
         google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.0.1'
+        classpath 'com.android.tools.build:gradle:7.1.2'
     }
 }
 
@@ -21,7 +21,8 @@ repositories {
 }
 
 dependencies {
-    implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
+//    implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
+    implementation fileTree(include: ['*.aar'], dir: 'uexGaodeMap/jar')
     implementation 'org.appcan:engine:4.4.27'
 }
 
@@ -34,8 +35,8 @@ android {
             storePassword '3g2win.com'
         }
     }
-    compileSdkVersion 28
-    buildToolsVersion "28.0.3"
+    compileSdkVersion 30
+//    buildToolsVersion "28.0.3"
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
