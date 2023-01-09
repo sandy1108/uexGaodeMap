@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html class="um landscape min-width-240px min-width-320px min-width-480px min-width-768px min-width-1024px">
+
+<head>
+    <title>
+    </title>
+    <meta charset="utf-8">
+    <meta name="viewport"
+        content="target-densitydpi=device-dpi, width=device-width, initial-scale=1, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="css/index.css">
+    <link rel="stylesheet" href="css/ui-btn.css">
+    <link rel="stylesheet" href="css/ui-base.css">
+    <link rel="stylesheet" href="css/ui-box.css">
+    <link rel="stylesheet" href="css/ui-color.css">
+    <link rel="stylesheet" href="css/ui-res.css">
+    <style>
+        input {
+            color: black;
+            padding: 1px 6px;
+            margin-left: 6px;
+        }
+
+        input[type="text"] {
+            padding: .2em .4em;
+            margin: .4em .6em;
+            font-size: 1em;
+        }
+
+        input[type="button"] {
+            padding: .6em .8em;
+            margin: .4em .6em;
+            font-size: 1.2em;
+        }
+    </style>
+    <script src="js/zy_control.js">
+    </script>
+    <script src="js/main.js">
+    </script>
+    <script type="text/javascript">
+
+
+        var isSetLoc = 0;
+        window.uexOnload = function () {
+            uexWidgetOne.cbError = function (opid, type, data) {
+                alert(data);
+            }
+            uexGaodeMap.onSDKReceiverError = function (json) {
+                alert("onSDKReceiverError: " + json);
+            }
+        }
+
+        function openLocation() {
+            var json = {
+                onceLocation: 0, // 是否单次定位，1为单次定位，返回位置后自动停止定位；0为持续定位，会持续返回位置，消耗资源，直到代码调用关闭定位。默认为0，持续定位。
+                locationInterval: 5000, // 定位间隔，单位毫秒，默认为2000毫秒，即最快2秒定位一次。
+            }
+            uexGaodeMap.apiOpenLocation(json, function (data) {
+                var dataStr = JSON.stringify(data)
+                console.log("apiOpenLocation: " + dataStr);
+                alert("经度：" + data.longitude + " 纬度：" + data.latitude);
+            });
+        }
+
+        function openLocationWithReverseGeocode() {
+            var json = {
+                onceLocation: 1, // 是否单次定位，1为单次定位，返回位置后自动停止定位；0为持续定位，会持续返回位置，消耗资源，直到代码调用关闭定位。默认为0，持续定位。
+                locationInterval: 5000, // 定位间隔，单位毫秒，默认为2000毫秒，即最快2秒定位一次。
+                needAddress: 1, // 是否需要返回地址信息，1为需要，0为不需要。默认为0，不需要。注意，即使选择0，定位结果有时候也会返回地址信息。
+            }
+            uexGaodeMap.apiOpenLocation(json, function (data) {
+                var dataStr = JSON.stringify(data)
+                console.log("apiOpenLocation: " + dataStr);
+                alert("apiOpenLocation: " + dataStr);
+                // 回调内容示例如下：
+                // {
+                //     "adCode": "110105",
+                //     "address": "北京市朝阳区北苑路辅路18号靠近华发颐园",
+                //     "aoiName": "华发颐园",
+                //     "city": "北京市",
+                //     "cityCode": "010",
+                //     "country": "中国",
+                //     "district": "朝阳区",
+                //     "latitude": 40.043778,
+                //     "longitude": 116.415135,
+                //     "province": "北京市",
+                //     "radius": 76,
+                //     "street": "北苑路辅路",
+                //     "streetNum": "18号"
+                // }
+            });
+        }
+
+        function closeLocation() {
+            // 会关闭当前页面发起的所有定位请求。如果有其他页面发起的定位请求，则需要在对应的页面中进行回收。
+            uexGaodeMap.apiCloseLocation();
+        }
+
+        function getAddress() {
+            uexGaodeMap.apiGetAddress(function (error, data) {
+                alert("callback:" + JSON.stringify(data));
+            });
+        }
+    </script>
+</head>
+
+<body class="um-vp " ontouchstart>
+    <div id="page_0" class="up ub ub-ver" tabindex="0">
+        <!--header开始-->
+        <div id="header" class="uh t-wh ub" style="background: #27A73F;">
+            <div class="umw4 ub ub-ac ub-pc" ontouchstart="zy_touch()" onclick="closeWin()">
+                <div ontouchstart="zy_touch('btn-act')" class="btn uba b-bla uinn5 c-blu c-m1 uc-a t-wh"
+                    style="background: -webkit-gradient(linear,0 0,0 100%,from(#FFCD00),color-stop(50%,#FFBC00),color-stop(50%,orange));border: 1px solid #FFA700;-webkit-border-radius: 8px;  text-align: center;color: #712000;  display: block; font-size: 1em; padding: 0.2em;">
+                    返回
+                </div>
+            </div>
+            <h1 class="ut ub-f1 ulev0 ut-s tx-c" tabindex="0">位置功能</h1>
+            <div class="umw4" ontouchstart="zy_touch()" onclick="">
+                <!--插入按钮控件-->
+            </div>
+        </div>
+        <!--header结束-->
+        <!--content开始-->
+        <div id="content" class="ub-f1 tx-l t-bla">
+
+            <div class="conbor">
+                <div class="consj" id="topDiv">
+                    <input type="button" value="打开定位" onclick="openLocation();">
+                    <input type="button" value="打开定位(携带逆地理编码信息)" onclick="openLocationWithReverseGeocode();">
+                    <input type="button" value="关闭定位" onclick="closeLocation();">
+<!--                    <input type="button" value="查询地址（逆地理编码）" onclick="getAddress();">-->
+                    <p></p><br>
+                </div>
+            </div>
+
+        </div>
+    </div>
+        
+</body>
+<script>
+
+</script>
+
+</html>
