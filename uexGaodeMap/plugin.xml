@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <uexplugins>
     <plugin
-            className="org.zywx.wbpalmstar.plugin.uexgaodemap.EUExGaodeMap"
-            uexName="uexGaodeMap">
+        className="org.zywx.wbpalmstar.plugin.uexgaodemap.EUExGaodeMap"
+        uexName="uexGaodeMap">
+
+        <method name="apiOpenLocation"/>
+        <method name="apiCloseLocation"/>
+
         <method name="open"/>
         <method name="close"/>
         <method name="setMapType"/>
