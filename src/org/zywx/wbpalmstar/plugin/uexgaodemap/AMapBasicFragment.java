@@ -1,5 +1,6 @@
 package org.zywx.wbpalmstar.plugin.uexgaodemap;
 
+import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -21,7 +22,6 @@ import com.amap.api.maps.AMap;
 import com.amap.api.maps.AMap.OnMapLoadedListener;
 import com.amap.api.maps.CameraUpdateFactory;
 import com.amap.api.maps.LocationSource;
-import com.amap.api.maps.MapView;
 import com.amap.api.maps.TextureMapView;
 import com.amap.api.maps.UiSettings;
 import com.amap.api.maps.model.CameraPosition;
@@ -29,6 +29,7 @@ import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.LatLngBounds;
 import com.amap.api.maps.model.Marker;
 import com.amap.api.maps.model.MyLocationStyle;
+import com.amap.api.services.core.AMapException;
 import com.amap.api.services.core.PoiItem;
 import com.amap.api.services.geocoder.GeocodeQuery;
 import com.amap.api.services.geocoder.GeocodeResult;
@@ -47,11 +48,6 @@ import org.zywx.wbpalmstar.base.BUtility;
 import org.zywx.wbpalmstar.base.listener.ImageLoaderListener;
 import org.zywx.wbpalmstar.base.view.BaseFragment;
 import org.zywx.wbpalmstar.engine.universalex.EUExUtil;
-import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.CustomButtonDisplayResultVO;
-import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.CustomButtonResultVO;
-import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.CustomButtonVO;
-import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.VisibleBoundsVO;
-import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.VisibleVO;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.bean.ArcBean;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.bean.BoundBaseBean;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.bean.CircleBean;
@@ -67,6 +63,11 @@ import org.zywx.wbpalmstar.plugin.uexgaodemap.bean.RectangleBoundBean;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.bean.SearchBean;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.util.GaodeUtils;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.util.OnCallBackListener;
+import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.CustomButtonDisplayResultVO;
+import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.CustomButtonResultVO;
+import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.CustomButtonVO;
+import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.VisibleBoundsVO;
+import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.VisibleVO;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -98,6 +99,7 @@ public class AMapBasicFragment extends BaseFragment implements OnMapLoadedListen
     public AMapBasicFragment() {
     }
 
+    @SuppressLint("ValidFragment")
     public AMapBasicFragment(OnCallBackListener mListener, double[] mCenter) {
         this.mListener = mListener;
         this.mCenter = mCenter;
@@ -441,7 +443,7 @@ public class AMapBasicFragment extends BaseFragment implements OnMapLoadedListen
         return overlayMgr.addGround(bean);
     }
 
-    public void getCurrentLocation(int callbackId) {
+    public void getCurrentLocation(int callbackId) throws Exception {
         if (mLocationClient == null) {
             mLocationClient=new AMapLocationClient(this.getActivity());
         }
@@ -711,7 +713,7 @@ public class AMapBasicFragment extends BaseFragment implements OnMapLoadedListen
         }
     }
 
-    public void startLocation(long minTime, float minDistance) {
+    public void startLocation(long minTime, float minDistance) throws Exception {
 
         if (mLocationListener == null) {
             mLocationListener = new GaodeLocationListener();
@@ -752,7 +754,7 @@ public class AMapBasicFragment extends BaseFragment implements OnMapLoadedListen
         mLocationClient = null;
     }
 
-    public void setMyLocationEnable(int type) {
+    public void setMyLocationEnable(int type) throws Exception {
         Log.i(TAG, "setMyLocationEnable-type = " + type);
         if (aMap != null) {
             aMap.setMyLocationEnabled(type == JsConst.ENABLE);
@@ -791,7 +793,7 @@ public class AMapBasicFragment extends BaseFragment implements OnMapLoadedListen
         }
     }
 
-    public void geocode(GeocodeQuery query, int callbackId) {
+    public void geocode(GeocodeQuery query, int callbackId) throws AMapException {
         if (this.getActivity() == null) {
             return;
         }
@@ -804,7 +806,7 @@ public class AMapBasicFragment extends BaseFragment implements OnMapLoadedListen
         }
     }
 
-    public void reGeocode(RegeocodeQuery query, int callbackId) {
+    public void reGeocode(RegeocodeQuery query, int callbackId) throws AMapException {
         if (this.getActivity() == null) {
             return;
         }
@@ -841,7 +843,7 @@ public class AMapBasicFragment extends BaseFragment implements OnMapLoadedListen
 
     }
 
-    public void poiSearch(SearchBean bean, int callbackId) {
+    public void poiSearch(SearchBean bean, int callbackId) throws AMapException {
         isShowOverlay = false;
         if (aMap != null) {
             isShowOverlay = bean.isShowMarker();

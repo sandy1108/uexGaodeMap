@@ -31,6 +31,7 @@ import com.amap.api.maps.model.LatLngBounds;
 import com.amap.api.maps.model.PolygonOptions;
 import com.amap.api.maps.model.PolylineOptions;
 import com.amap.api.maps.offlinemap.OfflineMapStatus;
+import com.amap.api.services.core.AMapException;
 import com.amap.api.services.core.LatLonPoint;
 import com.amap.api.services.core.PoiItem;
 import com.amap.api.services.geocoder.GeocodeAddress;
@@ -48,6 +49,7 @@ import com.amap.api.services.route.WalkRouteResult;
 import com.amap.api.trace.LBSTraceClient;
 import com.amap.api.trace.TraceListener;
 import com.amap.api.trace.TraceLocation;
+import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 
 import org.json.JSONArray;
@@ -73,10 +75,14 @@ import org.zywx.wbpalmstar.plugin.uexgaodemap.bean.PolygonBoundBean;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.bean.PolylineBean;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.bean.RectangleBoundBean;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.bean.SearchBean;
+import org.zywx.wbpalmstar.plugin.uexgaodemap.location.AMapLocationHandler;
+import org.zywx.wbpalmstar.plugin.uexgaodemap.location.LocationCallback;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.result.PoiItemVO;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.result.ResultVO;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.util.GaodeUtils;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.util.OnCallBackListener;
+import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.ApiOpenLocationResult;
+import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.ApiOpenLocationVO;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.AvailableCityVO;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.AvailableProvinceVO;
 import org.zywx.wbpalmstar.plugin.uexgaodemap.vo.CustomButtonDisplayResultVO;
@@ -174,12 +180,18 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
     private static final int MSG_REMOVE_CUSTOM_BUTTON = 69;
     private static final int MSG_SHOW_CUSTOM_BUTTONS = 70;
     private static final int MSG_HIDE_CUSTOM_BUTTONS = 71;
+    private static final int REQUEST_CODE_NO_MAP_LOCATION = 11100;
 
 
     private boolean isScrollWithWeb = false;
 
     private AMapBasicFragment basicFragment;
-    private String[]  openParams;
+    private String[] openParams;
+    private String[] apiOpenParams;
+
+    private LocationCallback mLocationCallback;
+
+    private AMapLocationHandler mLocationHandler;
 
     public EUExGaodeMap(Context context, EBrowserView eBrowserView) {
         super(context, eBrowserView);
@@ -188,6 +200,11 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
 
     @Override
     protected boolean clean() {
+        if (mLocationHandler != null) {
+            mLocationHandler.closeLocation(mLocationCallback);
+            mLocationCallback = null;
+            mLocationHandler = null;
+        }
         return false;
     }
 
@@ -195,6 +212,57 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
         ((Activity)context).getWindow().setFormat(PixelFormat.TRANSLUCENT);
     }
 
+    public void apiOpenLocation(String[] params) {
+        if (mContext.checkCallingOrSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED){
+            requsetPerssions(Manifest.permission.ACCESS_FINE_LOCATION, "请先申请权限"
+                    + Manifest.permission.ACCESS_FINE_LOCATION, REQUEST_CODE_NO_MAP_LOCATION);
+        } else {
+            apiOpenLocationMsg(params);
+        }
+    }
+
+    /**
+     * 纯定位，不打开地图
+     *
+     * @param params
+     */
+    public void apiOpenLocationMsg(final String[] params){
+        if (params == null || params.length < 2) {
+            return;
+        }
+        apiOpenParams = params;
+        if (mLocationCallback == null) {
+            mLocationCallback = new LocationCallback() {
+                @Override
+                public void onLocation(ApiOpenLocationResult locationResult) {
+                    JsonElement json = DataHelper.gson.toJsonTree(locationResult);
+                    callbackToJs(Integer.parseInt(params[1]), true, json);
+                }
+            };
+        }
+        try {
+            AMapLocationHandler.agreePrivacy(mContext);
+            ApiOpenLocationVO apiOpenLocationVO = DataHelper.gson.fromJson(params[0], ApiOpenLocationVO.class);
+            AMapLocationHandler handler = AMapLocationHandler.get(mContext);
+            mLocationHandler = handler;
+            handler.setLocationOptions(apiOpenLocationVO);
+            handler.openLocation(mLocationCallback);
+        } catch (Exception e) {
+            Toast.makeText(mContext, "apiOpenLocation失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
+    }
+
+    public void apiCloseLocation(String[] params){
+        try {
+            AMapLocationHandler handler = AMapLocationHandler.get(mContext);
+            handler.closeLocation(mLocationCallback);
+        } catch (Exception e) {
+            Toast.makeText(mContext, "apiCloseLocation失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
+    }
 
     public void open(final String[] params) {
         openParams = params;
@@ -1263,10 +1331,15 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        if (bean != null && getAMapActivity() != null){
-            getAMapActivity().poiSearch(bean,callbackId);
-        }else{
-            errorCallback(0, 0, "error params!");
+        try {
+            if (bean != null && getAMapActivity() != null){
+                getAMapActivity().poiSearch(bean,callbackId);
+            }else{
+                errorCallback(0, 0, "error params!");
+            }
+        } catch (AMapException e) {
+            Toast.makeText(mContext, "poiSearch失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
         }
     }
 
@@ -1531,8 +1604,13 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        if (query != null && getAMapActivity() != null){
-            getAMapActivity().geocode(query,callbackId);
+        try {
+            if (query != null && getAMapActivity() != null){
+                getAMapActivity().geocode(query,callbackId);
+            }
+        } catch (AMapException e) {
+            Toast.makeText(mContext, "geocode失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
         }
     }
 
@@ -1568,8 +1646,13 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        if (query != null && getAMapActivity() != null){
-            getAMapActivity().reGeocode(query,callbackId);
+        try {
+            if (query != null && getAMapActivity() != null){
+                getAMapActivity().reGeocode(query,callbackId);
+            }
+        } catch (AMapException e) {
+            Toast.makeText(mContext, "reverseGeocode失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
         }
     }
 
@@ -1578,8 +1661,13 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
         if (params!=null&&params.length>0){
             callbackId= Integer.parseInt(params[0]);
         }
-        if (getAMapActivity() != null){
-            getAMapActivity().getCurrentLocation(callbackId);
+        try {
+            if (getAMapActivity() != null){
+                getAMapActivity().getCurrentLocation(callbackId);
+            }
+        } catch (Exception e) {
+            Toast.makeText(mContext, "getCurrentLocation失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
         }
     }
 
@@ -1609,8 +1697,13 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
                 e.printStackTrace();
             }
         }
-        if (getAMapActivity() != null) {
-            getAMapActivity().startLocation(minTime, minDistance);
+        try {
+            if (getAMapActivity() != null) {
+                getAMapActivity().startLocation(minTime, minDistance);
+            }
+        } catch (Exception e) {
+            Toast.makeText(mContext, "startLocation失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
         }
     }
 
@@ -1653,8 +1746,13 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        if (type > -1 && getAMapActivity() != null){
-            getAMapActivity().setMyLocationEnable(type);
+        try {
+            if (type > -1 && getAMapActivity() != null){
+                getAMapActivity().setMyLocationEnable(type);
+            }
+        } catch (Exception e) {
+            Toast.makeText(mContext, "setMyLocationEnable失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
         }
     }
 
@@ -2332,45 +2430,50 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
         }
         RouteSearchVO searchVO=DataHelper.gson.fromJson(params[0],RouteSearchVO.class);
 
-        RouteSearch routeSearch=new RouteSearch(mContext);
-        final int finalCallbackId = callbackId;
-        routeSearch.setRouteSearchListener(new RouteSearch.OnRouteSearchListener() {
-            @Override
-            public void onBusRouteSearched(BusRouteResult busRouteResult, int i) {
+        try {
+            RouteSearch routeSearch=new RouteSearch(mContext);
+            final int finalCallbackId = callbackId;
+            routeSearch.setRouteSearchListener(new RouteSearch.OnRouteSearchListener() {
+                @Override
+                public void onBusRouteSearched(BusRouteResult busRouteResult, int i) {
 
-            }
-
-            @Override
-            public void onDriveRouteSearched(DriveRouteResult driveRouteResult, int errorCode) {
-                if (finalCallbackId !=-1){
-                    callbackToJs(finalCallbackId,
-                            false,errorCode==1000?0:errorCode,
-                            driveRouteResult==null?null:
-                            DataHelper.gson.toJsonTree(GaodeUtils.getRouteSearchResultVO(driveRouteResult)));
                 }
-            }
 
-            @Override
-            public void onWalkRouteSearched(WalkRouteResult walkRouteResult, int i) {
+                @Override
+                public void onDriveRouteSearched(DriveRouteResult driveRouteResult, int errorCode) {
+                    if (finalCallbackId !=-1){
+                        callbackToJs(finalCallbackId,
+                                false,errorCode==1000?0:errorCode,
+                                driveRouteResult==null?null:
+                                DataHelper.gson.toJsonTree(GaodeUtils.getRouteSearchResultVO(driveRouteResult)));
+                    }
+                }
 
-            }
-            @Override
-            public void onRideRouteSearched(RideRouteResult rideRouteResult, int i) {
+                @Override
+                public void onWalkRouteSearched(WalkRouteResult walkRouteResult, int i) {
 
-            }
-        });
+                }
+                @Override
+                public void onRideRouteSearched(RideRouteResult rideRouteResult, int i) {
 
-        RouteSearch.DriveRouteQuery query=new RouteSearch.DriveRouteQuery(
-                new RouteSearch.FromAndTo(
-                        new LatLonPoint(searchVO.origin.latitude,searchVO.origin.longitude),
-                        new LatLonPoint(searchVO.destination.latitude,searchVO.destination.longitude)
-                ),
-                searchVO.strategy,
-                null,
-                null,
-                searchVO.avoidRoad
-        );
-        routeSearch.calculateDriveRouteAsyn(query);
+                }
+            });
+
+            RouteSearch.DriveRouteQuery query=new RouteSearch.DriveRouteQuery(
+                    new RouteSearch.FromAndTo(
+                            new LatLonPoint(searchVO.origin.latitude,searchVO.origin.longitude),
+                            new LatLonPoint(searchVO.destination.latitude,searchVO.destination.longitude)
+                    ),
+                    searchVO.strategy,
+                    null,
+                    null,
+                    searchVO.avoidRoad
+            );
+            routeSearch.calculateDriveRouteAsyn(query);
+        } catch (AMapException e) {
+            Toast.makeText(mContext, "drivingRouteSearch失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
     }
 
     public void walkingRouteSearch(String[] params) {
@@ -2380,43 +2483,48 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
         }
         RouteSearchVO searchVO=DataHelper.gson.fromJson(params[0],RouteSearchVO.class);
 
-        RouteSearch routeSearch=new RouteSearch(mContext);
-        final int finalCallbackId = callbackId;
-        routeSearch.setRouteSearchListener(new RouteSearch.OnRouteSearchListener() {
-            @Override
-            public void onBusRouteSearched(BusRouteResult busRouteResult, int i) {
+        try {
+            RouteSearch routeSearch=new RouteSearch(mContext);
+            final int finalCallbackId = callbackId;
+            routeSearch.setRouteSearchListener(new RouteSearch.OnRouteSearchListener() {
+                @Override
+                public void onBusRouteSearched(BusRouteResult busRouteResult, int i) {
 
-            }
-
-            @Override
-            public void onDriveRouteSearched(DriveRouteResult driveRouteResult, int errorCode) {
-            }
-
-            @Override
-            public void onWalkRouteSearched(WalkRouteResult walkRouteResult, int errorCode) {
-                if (finalCallbackId !=-1){
-                    callbackToJs(finalCallbackId,
-                            false,errorCode==1000?0:errorCode,
-                            walkRouteResult==null?null:
-                            DataHelper.gson.toJsonTree(GaodeUtils.getRouteSearchResultVO(walkRouteResult)));
                 }
-            }
 
-            @Override
-            public void onRideRouteSearched(RideRouteResult rideRouteResult, int i) {
+                @Override
+                public void onDriveRouteSearched(DriveRouteResult driveRouteResult, int errorCode) {
+                }
 
-            }
+                @Override
+                public void onWalkRouteSearched(WalkRouteResult walkRouteResult, int errorCode) {
+                    if (finalCallbackId !=-1){
+                        callbackToJs(finalCallbackId,
+                                false,errorCode==1000?0:errorCode,
+                                walkRouteResult==null?null:
+                                DataHelper.gson.toJsonTree(GaodeUtils.getRouteSearchResultVO(walkRouteResult)));
+                    }
+                }
 
-        });
+                @Override
+                public void onRideRouteSearched(RideRouteResult rideRouteResult, int i) {
 
-        RouteSearch.WalkRouteQuery query=new RouteSearch.WalkRouteQuery(
-                new RouteSearch.FromAndTo(
-                        new LatLonPoint(searchVO.origin.latitude,searchVO.origin.longitude),
-                        new LatLonPoint(searchVO.destination.latitude,searchVO.destination.longitude)
-                ),
-                searchVO.strategy
-        );
-        routeSearch.calculateWalkRouteAsyn(query);
+                }
+
+            });
+
+            RouteSearch.WalkRouteQuery query=new RouteSearch.WalkRouteQuery(
+                    new RouteSearch.FromAndTo(
+                            new LatLonPoint(searchVO.origin.latitude,searchVO.origin.longitude),
+                            new LatLonPoint(searchVO.destination.latitude,searchVO.destination.longitude)
+                    ),
+                    searchVO.strategy
+            );
+            routeSearch.calculateWalkRouteAsyn(query);
+        } catch (AMapException e) {
+            Toast.makeText(mContext, "walkingRouteSearch失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
     }
 
     public void ridingRouteSearch(String[] params) {
@@ -2426,42 +2534,47 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
         }
         RouteSearchVO searchVO=DataHelper.gson.fromJson(params[0],RouteSearchVO.class);
 
-        RouteSearch routeSearch=new RouteSearch(mContext);
-        final int finalCallbackId = callbackId;
-        routeSearch.setRouteSearchListener(new RouteSearch.OnRouteSearchListener() {
-            @Override
-            public void onBusRouteSearched(BusRouteResult busRouteResult, int i) {
+        try {
+            RouteSearch routeSearch=new RouteSearch(mContext);
+            final int finalCallbackId = callbackId;
+            routeSearch.setRouteSearchListener(new RouteSearch.OnRouteSearchListener() {
+                @Override
+                public void onBusRouteSearched(BusRouteResult busRouteResult, int i) {
 
-            }
-
-            @Override
-            public void onDriveRouteSearched(DriveRouteResult driveRouteResult, int errorCode) {
-            }
-
-            @Override
-            public void onWalkRouteSearched(WalkRouteResult walkRouteResult, int errorCode) {
-            }
-
-            @Override
-            public void onRideRouteSearched(RideRouteResult rideRouteResult, int errorCode) {
-                if (finalCallbackId !=-1){
-                    callbackToJs(finalCallbackId,
-                            false,errorCode==1000?0:errorCode,
-                            rideRouteResult==null?null:
-                            DataHelper.gson.toJsonTree(GaodeUtils.getRouteSearchResultVO(rideRouteResult)));
                 }
-            }
 
-        });
+                @Override
+                public void onDriveRouteSearched(DriveRouteResult driveRouteResult, int errorCode) {
+                }
 
-        RouteSearch.RideRouteQuery query=new RouteSearch.RideRouteQuery(
-                new RouteSearch.FromAndTo(
-                        new LatLonPoint(searchVO.origin.latitude,searchVO.origin.longitude),
-                        new LatLonPoint(searchVO.destination.latitude,searchVO.destination.longitude)
-                ),
-                searchVO.strategy
-        );
-        routeSearch.calculateRideRouteAsyn(query);
+                @Override
+                public void onWalkRouteSearched(WalkRouteResult walkRouteResult, int errorCode) {
+                }
+
+                @Override
+                public void onRideRouteSearched(RideRouteResult rideRouteResult, int errorCode) {
+                    if (finalCallbackId !=-1){
+                        callbackToJs(finalCallbackId,
+                                false,errorCode==1000?0:errorCode,
+                                rideRouteResult==null?null:
+                                DataHelper.gson.toJsonTree(GaodeUtils.getRouteSearchResultVO(rideRouteResult)));
+                    }
+                }
+
+            });
+
+            RouteSearch.RideRouteQuery query=new RouteSearch.RideRouteQuery(
+                    new RouteSearch.FromAndTo(
+                            new LatLonPoint(searchVO.origin.latitude,searchVO.origin.longitude),
+                            new LatLonPoint(searchVO.destination.latitude,searchVO.destination.longitude)
+                    ),
+                    searchVO.strategy
+            );
+            routeSearch.calculateRideRouteAsyn(query);
+        } catch (AMapException e) {
+            Toast.makeText(mContext, "ridingRouteSearch失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
     }
 
     public void transitRouteSearch(String[] params) {
@@ -2471,43 +2584,48 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
         }
         RouteSearchVO searchVO=DataHelper.gson.fromJson(params[0],RouteSearchVO.class);
 
-        RouteSearch routeSearch=new RouteSearch(mContext);
-        final int finalCallbackId = callbackId;
-        routeSearch.setRouteSearchListener(new RouteSearch.OnRouteSearchListener() {
-            @Override
-            public void onBusRouteSearched(BusRouteResult busRouteResult, int errorCode) {
-                if (finalCallbackId !=-1){
-                    callbackToJs(finalCallbackId,
-                            false,
-                            errorCode==1000?0:errorCode,
-                            busRouteResult==null?null:
-                            DataHelper.gson.toJsonTree(GaodeUtils.getRouteSearchResultVO(busRouteResult)));
+        try {
+            RouteSearch routeSearch=new RouteSearch(mContext);
+            final int finalCallbackId = callbackId;
+            routeSearch.setRouteSearchListener(new RouteSearch.OnRouteSearchListener() {
+                @Override
+                public void onBusRouteSearched(BusRouteResult busRouteResult, int errorCode) {
+                    if (finalCallbackId !=-1){
+                        callbackToJs(finalCallbackId,
+                                false,
+                                errorCode==1000?0:errorCode,
+                                busRouteResult==null?null:
+                                DataHelper.gson.toJsonTree(GaodeUtils.getRouteSearchResultVO(busRouteResult)));
+                    }
                 }
-            }
 
-            @Override
-            public void onDriveRouteSearched(DriveRouteResult driveRouteResult, int errorCode) {
-            }
+                @Override
+                public void onDriveRouteSearched(DriveRouteResult driveRouteResult, int errorCode) {
+                }
 
-            @Override
-            public void onWalkRouteSearched(WalkRouteResult walkRouteResult, int errorCode) {
+                @Override
+                public void onWalkRouteSearched(WalkRouteResult walkRouteResult, int errorCode) {
 
-            }
-            @Override
-            public void onRideRouteSearched(RideRouteResult rideRouteResult, int i) {
+                }
+                @Override
+                public void onRideRouteSearched(RideRouteResult rideRouteResult, int i) {
 
-            }
+                }
 
 
-        });
-        RouteSearch.BusRouteQuery query = new RouteSearch.BusRouteQuery(
-                new RouteSearch.FromAndTo(
-                        new LatLonPoint(searchVO.origin.latitude,searchVO.origin.longitude),
-                        new LatLonPoint(searchVO.destination.latitude,searchVO.destination.longitude)),
-                searchVO.strategy,
-                searchVO.city,
-                searchVO.nightFlag?1:0);
-        routeSearch.calculateBusRouteAsyn(query);
+            });
+            RouteSearch.BusRouteQuery query = new RouteSearch.BusRouteQuery(
+                    new RouteSearch.FromAndTo(
+                            new LatLonPoint(searchVO.origin.latitude,searchVO.origin.longitude),
+                            new LatLonPoint(searchVO.destination.latitude,searchVO.destination.longitude)),
+                    searchVO.strategy,
+                    searchVO.city,
+                    searchVO.nightFlag?1:0);
+            routeSearch.calculateBusRouteAsyn(query);
+        } catch (AMapException e) {
+            Toast.makeText(mContext, "transitRouteSearch失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
     }
 
     public void resize(String[] params) {
@@ -2836,42 +2954,47 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
         if (params.length>2){
             progressCallbackId= Integer.parseInt(params[2]);
         }
-        LBSTraceClient lbsTraceClient=LBSTraceClient.getInstance(mContext);
-        final int finalCallbackId = callbackId;
-        final TraceResultVO traceResultVO=new TraceResultVO();
-        final int finalProgressCallbackId = progressCallbackId;
-        lbsTraceClient.queryProcessedTrace(queryProcessedTraceVO.sequenceLineId,
-                parseTraceLocationList(queryProcessedTraceVO.traceList),
-                queryProcessedTraceVO.coordinateType, new TraceListener() {
-                    @Override
-                    public void onRequestFailed(int lineID, String errorInfo) {
-                        if (finalCallbackId!=-1) {
-                            traceResultVO.lineID=lineID;
-                            traceResultVO.errorInfo=errorInfo;
-                            callbackToJs(finalCallbackId, false, 1,DataHelper.gson.toJsonTree(traceResultVO) );
-                        }
-                    }
-
-                    @Override
-                    public void onTraceProcessing(int lineID, int index, List<LatLng> linePoints) {
-                        if (finalProgressCallbackId!=-1){
-
+        try {
+            LBSTraceClient lbsTraceClient=LBSTraceClient.getInstance(mContext);
+            final int finalCallbackId = callbackId;
+            final TraceResultVO traceResultVO=new TraceResultVO();
+            final int finalProgressCallbackId = progressCallbackId;
+            lbsTraceClient.queryProcessedTrace(queryProcessedTraceVO.sequenceLineId,
+                    parseTraceLocationList(queryProcessedTraceVO.traceList),
+                    queryProcessedTraceVO.coordinateType, new TraceListener() {
+                        @Override
+                        public void onRequestFailed(int lineID, String errorInfo) {
+                            if (finalCallbackId!=-1) {
+                                traceResultVO.lineID=lineID;
+                                traceResultVO.errorInfo=errorInfo;
+                                callbackToJs(finalCallbackId, false, 1,DataHelper.gson.toJsonTree(traceResultVO) );
+                            }
                         }
 
-                    }
+                        @Override
+                        public void onTraceProcessing(int lineID, int index, List<LatLng> linePoints) {
+                            if (finalProgressCallbackId!=-1){
 
-                    @Override
-                    public void onFinished(int lineID,List<LatLng> linePoints,int distance,int waitingTime) {
+                            }
 
-                        if (finalCallbackId!=-1) {
-                            traceResultVO.lineID=lineID;
-                            traceResultVO.distance=distance;
-                            traceResultVO.waitingTime=waitingTime;
-                            traceResultVO.linePoints=parseGeoPoints(linePoints);
-                            callbackToJs(finalCallbackId, false, 0, DataHelper.gson.toJsonTree(traceResultVO));
                         }
-                    }
-                });
+
+                        @Override
+                        public void onFinished(int lineID,List<LatLng> linePoints,int distance,int waitingTime) {
+
+                            if (finalCallbackId!=-1) {
+                                traceResultVO.lineID=lineID;
+                                traceResultVO.distance=distance;
+                                traceResultVO.waitingTime=waitingTime;
+                                traceResultVO.linePoints=parseGeoPoints(linePoints);
+                                callbackToJs(finalCallbackId, false, 0, DataHelper.gson.toJsonTree(traceResultVO));
+                            }
+                        }
+                    });
+        } catch (Exception e) {
+            Toast.makeText(mContext, "queryProcessedTrace error：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
     }
 
     private List<TraceLocation> parseTraceLocationList(List<TraceLocationVO> traceLocationVOs){
@@ -2924,6 +3047,21 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
                     Toast.makeText(mContext, "请先设置权限" + permissions[0], Toast.LENGTH_LONG).show();
                 } else {
                     requsetPerssions(Manifest.permission.ACCESS_FINE_LOCATION, "请先申请权限" + permissions[0], 1);
+                }
+            }
+        } else if (requestCode == REQUEST_CODE_NO_MAP_LOCATION){
+            if (grantResults[0] != PackageManager.PERMISSION_DENIED){
+                apiOpenLocationMsg(apiOpenParams);
+            } else {
+                // 对于 ActivityCompat.shouldShowRequestPermissionRationale
+                // 1：用户拒绝了该权限，没有勾选"不再提醒"，此方法将返回true。
+                // 2：用户拒绝了该权限，有勾选"不再提醒"，此方法将返回 false。
+                // 3：如果用户同意了权限，此方法返回false
+                // 拒绝了权限且勾选了"不再提醒"
+                if (!ActivityCompat.shouldShowRequestPermissionRationale((EBrowserActivity)mContext, permissions[0])) {
+                    Toast.makeText(mContext, "请先设置权限" + permissions[0], Toast.LENGTH_LONG).show();
+                } else {
+                    requsetPerssions(Manifest.permission.ACCESS_COARSE_LOCATION, "请先申请权限" + permissions[0], REQUEST_CODE_NO_MAP_LOCATION);
                 }
             }
         }

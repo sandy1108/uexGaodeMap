@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.text.TextUtils;
+import android.widget.Toast;
 
 import com.amap.api.maps.AMapException;
 import com.amap.api.maps.offlinemap.OfflineMapCity;
@@ -63,25 +64,30 @@ public class GaodeMapOfflineManager implements OfflineMapManager.OfflineMapDownl
     }
 
     private void getAvailableList() {
-        if (offlineMapManager == null){
-            offlineMapManager = new OfflineMapManager(mContext, this);
-        }
-        if (mAvailableList != null){
-            mAvailableList.clear();
-        }
-        List<OfflineMapProvince> all = offlineMapManager.getOfflineMapProvinceList();
-        for (int i = 0; i < all.size(); i++){
-            OfflineMapProvince item = all.get(i);
-            mAvailableList.add(new DownloadItemVO(item));
-            List<OfflineMapCity> cityList = item.getCityList();
-            if (cityList != null && cityList.size() > 0){
-                for (int j =0; j < cityList.size(); j++){
-                    OfflineMapCity city = cityList.get(j);
-                    if (!isInAvailable(city.getCity())){
-                        mAvailableList.add(new DownloadItemVO(city));
+        try {
+            if (offlineMapManager == null){
+                offlineMapManager = new OfflineMapManager(mContext, this);
+            }
+            if (mAvailableList != null){
+                mAvailableList.clear();
+            }
+            List<OfflineMapProvince> all = offlineMapManager.getOfflineMapProvinceList();
+            for (int i = 0; i < all.size(); i++){
+                OfflineMapProvince item = all.get(i);
+                mAvailableList.add(new DownloadItemVO(item));
+                List<OfflineMapCity> cityList = item.getCityList();
+                if (cityList != null && cityList.size() > 0){
+                    for (int j =0; j < cityList.size(); j++){
+                        OfflineMapCity city = cityList.get(j);
+                        if (!isInAvailable(city.getCity())){
+                            mAvailableList.add(new DownloadItemVO(city));
+                        }
                     }
                 }
             }
+        } catch (Exception e) {
+            Toast.makeText(mContext, "获取离线地图列表失败", Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
         }
     }
 
@@ -95,35 +101,39 @@ public class GaodeMapOfflineManager implements OfflineMapManager.OfflineMapDownl
     }
 
     public void download(DownloadItemVO downloadVO, int callbackId, boolean isLast) {
-        if (offlineMapManager == null){
-            offlineMapManager = new OfflineMapManager(mContext, this);
-        }
-        DownloadResultVO data = new DownloadResultVO();
-        data.setName(downloadVO.getName());
-        if(isDownloading(downloadVO.getName()) && !isDownloadingError(downloadVO.getName())){
-            data.setErrorCode(JsConst.ERROR_IS_EXIST);
-            data.setErrorStr(EUExUtil.getString("plugin_uexgaodemap_is_exist"));
-        }else if(isDownload(downloadVO.getName())){
-            data.setErrorCode(JsConst.ERROR_IS_DOWNLOAD);
-            data.setErrorStr(EUExUtil.getString("plugin_uexgaodemap_is_download"));
-        }else if(!isValidCityName(downloadVO.getName())){
-            data.setErrorCode(JsConst.ERROR_WRONG_CITY_NAME);
-            data.setErrorStr(EUExUtil.getString("plugin_uexgaodemap_wrong_city_name"));
-        }else {
-            if (isDownloading(downloadVO.getName())){
-                updateDownloadStatus(downloadVO.getName(), OfflineMapStatus.LOADING);
+        try {
+            if (offlineMapManager == null){
+                offlineMapManager = new OfflineMapManager(mContext, this);
+            }
+            DownloadResultVO data = new DownloadResultVO();
+            data.setName(downloadVO.getName());
+            if(isDownloading(downloadVO.getName()) && !isDownloadingError(downloadVO.getName())){
+                data.setErrorCode(JsConst.ERROR_IS_EXIST);
+                data.setErrorStr(EUExUtil.getString("plugin_uexgaodemap_is_exist"));
+            }else if(isDownload(downloadVO.getName())){
+                data.setErrorCode(JsConst.ERROR_IS_DOWNLOAD);
+                data.setErrorStr(EUExUtil.getString("plugin_uexgaodemap_is_download"));
+            }else if(!isValidCityName(downloadVO.getName())){
+                data.setErrorCode(JsConst.ERROR_WRONG_CITY_NAME);
+                data.setErrorStr(EUExUtil.getString("plugin_uexgaodemap_wrong_city_name"));
             }else {
-                mDownloadingList.add(downloadVO);
-            }
+                if (isDownloading(downloadVO.getName())){
+                    updateDownloadStatus(downloadVO.getName(), OfflineMapStatus.LOADING);
+                }else {
+                    mDownloadingList.add(downloadVO);
+                }
 
-            SharedPreferencesUtils.saveLocalDownloadingList(mContext, mDownloadingList);
-            data.setErrorCode(JsConst.SUCCESS);
-            if (!isDownloading){
-                sendStartDownloadMsg();
+                SharedPreferencesUtils.saveLocalDownloadingList(mContext, mDownloadingList);
+                data.setErrorCode(JsConst.SUCCESS);
+                if (!isDownloading){
+                    sendStartDownloadMsg();
+                }
             }
-        }
-        if (mListener != null){
-            mListener.cbDownload(data,callbackId,isLast);
+            if (mListener != null){
+                mListener.cbDownload(data,callbackId,isLast);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -183,30 +193,35 @@ public class GaodeMapOfflineManager implements OfflineMapManager.OfflineMapDownl
     }
 
     public void deleteList(List<String> list, int callbackId) {
-        if (offlineMapManager == null){
-            offlineMapManager = new OfflineMapManager(mContext, this);
-        }
-        if (list == null){
-            if (isDownloading){
-                offlineMapManager.stop();
+        try {
+            if (offlineMapManager == null){
+                offlineMapManager = new OfflineMapManager(mContext, this);
             }
-            List<String> allList = new ArrayList<String>();
-            if (mDownloadingList != null){
-                for (int i = 0; i < mDownloadingList.size(); i++){
-                    allList.add(mDownloadingList.get(i).getName());
+            if (list == null){
+                if (isDownloading){
+                    offlineMapManager.stop();
+                }
+                List<String> allList = new ArrayList<String>();
+                if (mDownloadingList != null){
+                    for (int i = 0; i < mDownloadingList.size(); i++){
+                        allList.add(mDownloadingList.get(i).getName());
+                    }
+                }
+                if (mDownloadList != null){
+                    for (int i = 0; i < mDownloadList.size(); i++){
+                        allList.add(mDownloadList.get(i).getName());
+                    }
+                }
+                list = allList;
+            }
+            if (list.size() > 0){
+                for (int i = 0; i < list.size(); i++){
+                    delete(list.get(i),callbackId,i==(list.size()-1));
                 }
             }
-            if (mDownloadList != null){
-                for (int i = 0; i < mDownloadList.size(); i++){
-                    allList.add(mDownloadList.get(i).getName());
-                }
-            }
-            list = allList;
-        }
-        if (list.size() > 0){
-            for (int i = 0; i < list.size(); i++){
-                delete(list.get(i),callbackId,i==(list.size()-1));
-            }
+        } catch (Exception e) {
+            // AMap异常处理
+            e.printStackTrace();
         }
     }
 
@@ -240,33 +255,43 @@ public class GaodeMapOfflineManager implements OfflineMapManager.OfflineMapDownl
     }
 
     public void getDownloadCityList(final List<DownloadItemVO> resultList) {
-        if (offlineMapManager == null){
-            offlineMapManager = new OfflineMapManager(mContext, this);
-        }
-        List<OfflineMapCity> list = offlineMapManager.getDownloadOfflineMapCityList();
-        if (list != null){
-            for (int i = 0; i < list.size(); i++){
-                OfflineMapCity city = list.get(i);
-                DownloadItemVO item = new DownloadItemVO(city);
-                resultList.add(item);
+        try {
+            if (offlineMapManager == null){
+                offlineMapManager = new OfflineMapManager(mContext, this);
             }
+            List<OfflineMapCity> list = offlineMapManager.getDownloadOfflineMapCityList();
+            if (list != null){
+                for (int i = 0; i < list.size(); i++){
+                    OfflineMapCity city = list.get(i);
+                    DownloadItemVO item = new DownloadItemVO(city);
+                    resultList.add(item);
+                }
+            }
+        } catch (Exception e) {
+            // AMap异常处理
+            e.printStackTrace();
         }
     }
 
     public void getDownloadProvinceList(final List<DownloadItemVO> resultList){
-        if (offlineMapManager == null){
-            offlineMapManager = new OfflineMapManager(mContext, this);
-        }
-        List<OfflineMapProvince> list = offlineMapManager
-                .getDownloadOfflineMapProvinceList();
-        if (list != null){
-            for (int i = 0; i < list.size(); i++){
-                OfflineMapProvince data = list.get(i);
-                if (!isDownloadExist(resultList, data.getProvinceName())){
-                    DownloadItemVO item = new DownloadItemVO(data);
-                    resultList.add(item);
+        try {
+            if (offlineMapManager == null){
+                offlineMapManager = new OfflineMapManager(mContext, this);
+            }
+            List<OfflineMapProvince> list = offlineMapManager
+                    .getDownloadOfflineMapProvinceList();
+            if (list != null){
+                for (int i = 0; i < list.size(); i++){
+                    OfflineMapProvince data = list.get(i);
+                    if (!isDownloadExist(resultList, data.getProvinceName())){
+                        DownloadItemVO item = new DownloadItemVO(data);
+                        resultList.add(item);
+                    }
                 }
             }
+        } catch (Exception e) {
+            // AMap异常处理
+            e.printStackTrace();
         }
     }
 
@@ -282,116 +307,151 @@ public class GaodeMapOfflineManager implements OfflineMapManager.OfflineMapDownl
     }
 
     public void getDownloadingCityList(final List<DownloadItemVO> resultList) {
-        if (offlineMapManager == null){
-            offlineMapManager = new OfflineMapManager(mContext, this);
-        }
-        List<OfflineMapCity> list = offlineMapManager.getDownloadingCityList();
-        if (list != null){
-            for (int i = 0; i < list.size(); i++){
-                OfflineMapCity city = list.get(i);
-                DownloadItemVO item = new DownloadItemVO(city);
-                resultList.add(item);
+        try {
+            if (offlineMapManager == null){
+                offlineMapManager = new OfflineMapManager(mContext, this);
             }
-        }
-    }
-
-    public void getDownloadingProvinceList(final List<DownloadItemVO> resultList){
-        if (offlineMapManager == null){
-            offlineMapManager = new OfflineMapManager(mContext, this);
-        }
-        List<OfflineMapProvince> list = offlineMapManager
-                .getDownloadingProvinceList();
-        if (list != null){
-            for (int i = 0; i < list.size(); i++){
-                OfflineMapProvince city = list.get(i);
-                if (!isDownloadExist(resultList, city.getProvinceName())){
+            List<OfflineMapCity> list = offlineMapManager.getDownloadingCityList();
+            if (list != null){
+                for (int i = 0; i < list.size(); i++){
+                    OfflineMapCity city = list.get(i);
                     DownloadItemVO item = new DownloadItemVO(city);
                     resultList.add(item);
                 }
             }
+        } catch (Exception e) {
+            // AMap异常处理
+            e.printStackTrace();
+        }
+    }
+
+    public void getDownloadingProvinceList(final List<DownloadItemVO> resultList){
+        try {
+            if (offlineMapManager == null){
+                offlineMapManager = new OfflineMapManager(mContext, this);
+            }
+            List<OfflineMapProvince> list = offlineMapManager
+                    .getDownloadingProvinceList();
+            if (list != null){
+                for (int i = 0; i < list.size(); i++){
+                    OfflineMapProvince city = list.get(i);
+                    if (!isDownloadExist(resultList, city.getProvinceName())){
+                        DownloadItemVO item = new DownloadItemVO(city);
+                        resultList.add(item);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // AMap异常处理
+            e.printStackTrace();
         }
     }
 
     public void getAvailableCityList(final int callbackId) {
-        if (offlineMapManager == null){
-            offlineMapManager = new OfflineMapManager(mContext, this);
-        }
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                List<AvailableCityVO> resultList = new ArrayList<AvailableCityVO>();
-                try {
-                    List<OfflineMapCity> list = offlineMapManager.getOfflineMapCityList();
-                    if (list != null){
-                        for (int i = 0; i < list.size(); i++){
-                            OfflineMapCity city = list.get(i);
-                            AvailableCityVO item = new AvailableCityVO(city);
-                            resultList.add(item);
-                        }
-                    }
-                    if (mListener != null){
-                        mListener.cbGetAvailableCityList(resultList,callbackId);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+        try {
+            if (offlineMapManager == null){
+                offlineMapManager = new OfflineMapManager(mContext, this);
             }
-        }).start();
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    List<AvailableCityVO> resultList = new ArrayList<AvailableCityVO>();
+                    try {
+                        List<OfflineMapCity> list = offlineMapManager.getOfflineMapCityList();
+                        if (list != null){
+                            for (int i = 0; i < list.size(); i++){
+                                OfflineMapCity city = list.get(i);
+                                AvailableCityVO item = new AvailableCityVO(city);
+                                resultList.add(item);
+                            }
+                        }
+                        if (mListener != null){
+                            mListener.cbGetAvailableCityList(resultList,callbackId);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+        } catch (Exception e) {
+            // AMap异常处理
+            e.printStackTrace();
+        }
     }
 
     public void restart(String city) {
-        if (offlineMapManager == null){
-            offlineMapManager = new OfflineMapManager(mContext, this);
+        try {
+            if (offlineMapManager == null){
+                offlineMapManager = new OfflineMapManager(mContext, this);
+            }
+            updateDownloadStatus(city, OfflineMapStatus.LOADING);
+            sendStartDownloadMsg();
+            //offlineMapManager.restart();
+        } catch (Exception e) {
+            // AMap异常处理
+            e.printStackTrace();
         }
-        updateDownloadStatus(city, OfflineMapStatus.LOADING);
-        sendStartDownloadMsg();
-        //offlineMapManager.restart();
     }
 
     public void pause(String city) {
-        if (offlineMapManager == null){
-            offlineMapManager = new OfflineMapManager(mContext, this);
+        try {
+            if (offlineMapManager == null){
+                offlineMapManager = new OfflineMapManager(mContext, this);
+            }
+            updateDownloadStatus(city, OfflineMapStatus.PAUSE);
+            if (city.equals(mDownloadingName)){
+                isDownloading = false;
+                offlineMapManager.pause();
+            }
+            sendStartDownloadMsg();
+        } catch (Exception e) {
+            // AMap异常处理
+            e.printStackTrace();
         }
-        updateDownloadStatus(city, OfflineMapStatus.PAUSE);
-        if (city.equals(mDownloadingName)){
-            isDownloading = false;
-            offlineMapManager.pause();
-        }
-        sendStartDownloadMsg();
     }
 
     public void stop(String city) {
-        if (offlineMapManager == null){
-            offlineMapManager = new OfflineMapManager(mContext, this);
+        try {
+            if (offlineMapManager == null){
+                offlineMapManager = new OfflineMapManager(mContext, this);
+            }
+            offlineMapManager.stop();
+        } catch (Exception e) {
+            // AMap异常处理
+            e.printStackTrace();
         }
-        offlineMapManager.stop();
     }
 
     public void getAvailableProvinceList(final int callbackId) {
-        if (offlineMapManager == null){
-            offlineMapManager = new OfflineMapManager(mContext, this);
-        }
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                List<AvailableProvinceVO> resultList = new ArrayList<AvailableProvinceVO>();
-                try {
-                    List<OfflineMapProvince> list = offlineMapManager.getOfflineMapProvinceList();
-                    if (list != null){
-                        for (int i = 0; i < list.size(); i++){
-                            OfflineMapProvince province = list.get(i);
-                            AvailableProvinceVO item = new AvailableProvinceVO(province);
-                            resultList.add(item);
-                        }
-                    }
-                    if (mListener != null){
-                        mListener.cbGetAvailableProvinceList(resultList,callbackId);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+        try {
+            if (offlineMapManager == null){
+                offlineMapManager = new OfflineMapManager(mContext, this);
             }
-        }).start();
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    List<AvailableProvinceVO> resultList = new ArrayList<AvailableProvinceVO>();
+                    try {
+                        List<OfflineMapProvince> list = offlineMapManager.getOfflineMapProvinceList();
+                        if (list != null){
+                            for (int i = 0; i < list.size(); i++){
+                                OfflineMapProvince province = list.get(i);
+                                AvailableProvinceVO item = new AvailableProvinceVO(province);
+                                resultList.add(item);
+                            }
+                        }
+                        if (mListener != null){
+                            mListener.cbGetAvailableProvinceList(resultList,callbackId);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+        } catch (Exception e) {
+            // AMap异常处理
+            e.printStackTrace();
+        }
     }
 
     public List<DownloadItemVO> getDownloadList(int callbackId) {
@@ -490,15 +550,20 @@ public class GaodeMapOfflineManager implements OfflineMapManager.OfflineMapDownl
     }
 
     private void isNeedUpdate(DownloadItemVO data){
-        if (offlineMapManager == null){
-            offlineMapManager = new OfflineMapManager(mContext, this);
-        }
         try {
-            offlineMapManager.updateOfflineCityByName(data.getName());
-        } catch (AMapException e) {
-            if (BDebug.DEBUG) {
-                e.printStackTrace();
+            if (offlineMapManager == null){
+                offlineMapManager = new OfflineMapManager(mContext, this);
             }
+            try {
+                offlineMapManager.updateOfflineCityByName(data.getName());
+            } catch (AMapException e) {
+                if (BDebug.DEBUG) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (Exception e) {
+            // AMap异常处理
+            e.printStackTrace();
         }
     }
 
