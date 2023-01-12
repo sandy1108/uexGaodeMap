@@ -65,17 +65,15 @@ public class AMapLocationHandler {
             return;
         }
         String onceLocation = apiOpenLocationVO.getOnceLocation();
-        if (!TextUtils.isEmpty(onceLocation)) {
-            mLocationOption.setOnceLocation(onceLocation.equals("1"));
-        }
+        mLocationOption.setOnceLocation("1".equals(onceLocation));
         String locationInterval = apiOpenLocationVO.getLocationInterval();
         if (!TextUtils.isEmpty(locationInterval)) {
             mLocationOption.setInterval(Integer.parseInt(locationInterval));
+        } else {
+            mLocationOption.setInterval(INTERVAL);
         }
         String needAddress = apiOpenLocationVO.getNeedAddress();
-        if (!TextUtils.isEmpty(needAddress)) {
-            mLocationOption.setNeedAddress(needAddress.equals("1"));
-        }
+        mLocationOption.setNeedAddress("1".equals(needAddress));
         mLocationClient.setLocationOption(mLocationOption);
     }
 

@@ -237,7 +237,7 @@ public class EUExGaodeMap extends EUExBase implements OnCallBackListener {
                 @Override
                 public void onLocation(ApiOpenLocationResult locationResult) {
                     JsonElement json = DataHelper.gson.toJsonTree(locationResult);
-                    callbackToJs(Integer.parseInt(params[1]), true, json);
+                    callbackToJs(Integer.parseInt(apiOpenParams[1]), true, json);
                 }
             };
         }
